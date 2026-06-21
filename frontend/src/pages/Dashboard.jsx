@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import CreateTripForm from '../components/CreateTripForm';
+import ItineraryCard from '../components/ItineraryCard';
+import PackingList from '../components/PackingList';
 
 export default function Dashboard() {
   const [trips, setTrips] = useState([]);
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activityInputs, setActivityInputs] = useState({});
   const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
 
@@ -43,48 +45,27 @@ export default function Dashboard() {
     navigate('/');
   };
 
-  const handleAddActivity = async (e, dayNumber) => {
-    e.preventDefault();
-    const title = activityInputs[dayNumber]?.trim();
-    if (!title || !selectedTrip) return;
-
-    const newActivity = {
-      title,
-      description: 'Manually added activity',
-      estimatedCostUSD: 0,
-      timeOfDay: 'Morning'
-    };
-
-    const updatedItinerary = selectedTrip.itinerary.map(day => {
-      if (day.dayNumber === dayNumber) {
-        return {
-          ...day,
-          activities: [...day.activities, newActivity]
-        };
-      }
-      return day;
-    });
-
-    try {
-      const response = await api.put(`/api/trips/${selectedTrip._id}`, {
-        itinerary: updatedItinerary
-      });
-      setSelectedTrip(response.data);
-      setTrips(trips.map(t => t._id === response.data._id ? response.data : t));
-      setActivityInputs({
-        ...activityInputs,
-        [dayNumber]: ''
-      });
-    } catch (error) {
-      console.error('Failed to add activity:', error);
-    }
+  const handleTripCreated = (newTrip) => {
+    setTrips([newTrip, ...trips]);
+    setSelectedTrip(newTrip);
   };
 
-  const handleActivityInputChange = (dayNumber, val) => {
-    setActivityInputs({
-      ...activityInputs,
-      [dayNumber]: val
-    });
+  const handleTripUpdated = (updatedTrip) => {
+    setSelectedTrip(updatedTrip);
+    setTrips(trips.map(t => t._id === updatedTrip._id ? updatedTrip : t));
+  };
+
+  const handleDeleteTrip = async (tripId) => {
+    if (!window.confirm('Are you sure you want to delete this trip itinerary?')) return;
+
+    try {
+      await api.delete(`/api/trips/${tripId}`);
+      const remainingTrips = trips.filter(t => t._id !== tripId);
+      setTrips(remainingTrips);
+      setSelectedTrip(remainingTrips.length > 0 ? remainingTrips[0] : null);
+    } catch (error) {
+      console.error('Failed to delete trip:', error);
+    }
   };
 
   if (loading) {
@@ -145,20 +126,30 @@ export default function Dashboard() {
               </h3>
               <div className="space-y-2">
                 {trips.map((t) => (
-                  <button
-                    key={t._id}
-                    onClick={() => setSelectedTrip(t)}
-                    className={`w-full text-left p-4 rounded-xl border text-sm transition-all flex flex-col gap-1 ${
-                      selectedTrip?._id === t._id
-                        ? 'bg-indigo-600/15 border-indigo-500/50 text-indigo-200'
-                        : 'bg-slate-950/40 border-slate-800/60 text-slate-300 hover:border-slate-700/80'
-                    }`}
-                  >
-                    <span className="font-bold text-slate-100 text-base">{t.destination}</span>
-                    <span className="text-xs text-slate-400">
-                      {t.durationDays} Days • {t.budgetTier} Budget
-                    </span>
-                  </button>
+                  <div key={t._id} className="relative group">
+                    <button
+                      onClick={() => setSelectedTrip(t)}
+                      className={`w-full text-left p-4 pr-12 rounded-xl border text-sm transition-all flex flex-col gap-1 ${
+                        selectedTrip?._id === t._id
+                          ? 'bg-indigo-600/15 border-indigo-500/50 text-indigo-200'
+                          : 'bg-slate-950/40 border-slate-800/60 text-slate-300 hover:border-slate-700/80'
+                      }`}
+                    >
+                      <span className="font-bold text-slate-100 text-base">{t.destination}</span>
+                      <span className="text-xs text-slate-400">
+                        {t.durationDays} Days • {t.budgetTier} Budget
+                      </span>
+                    </button>
+                    
+                    {/* Delete Trip button */}
+                    <button
+                      onClick={() => handleDeleteTrip(t._id)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-rose-400 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+                      title="Delete Trip"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -195,7 +186,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Right Column (Itinerary Timeline & Details) */}
+          {/* Right Column (Itinerary Timeline & Packing List) */}
           <div className="lg:col-span-2 space-y-6">
             {selectedTrip && (
               <>
@@ -207,69 +198,30 @@ export default function Dashboard() {
                   
                   <div className="relative pl-6 border-l-2 border-indigo-500/30 ml-4 space-y-8">
                     {selectedTrip.itinerary.map((day) => (
-                      <div key={day.dayNumber} className="relative">
-                        {/* Dot marker */}
-                        <div className="absolute left-[-31px] top-1.5 w-4 h-4 rounded-full bg-slate-950 border-2 border-indigo-500 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
-                        </div>
-
-                        <div className="mb-4">
-                          <h4 className="text-lg font-bold text-slate-200">Day {day.dayNumber}</h4>
-                        </div>
-
-                        <div className="space-y-4">
-                          {day.activities.map((act, index) => (
-                            <div key={index} className="bg-slate-950/60 border border-slate-800/60 p-4 rounded-xl flex justify-between gap-4">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold text-slate-200">{act.title}</span>
-                                  <span className="text-[10px] bg-slate-800/60 px-2 py-0.5 rounded-md font-mono text-cyan-400 uppercase">
-                                    {act.timeOfDay}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-slate-400">{act.description}</p>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <span className="text-xs font-mono bg-indigo-500/10 px-2 py-1 rounded-md text-indigo-400">
-                                  ${act.estimatedCostUSD}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Add activity inline form */}
-                        <form onSubmit={(e) => handleAddActivity(e, day.dayNumber)} className="mt-4 flex gap-2">
-                          <input
-                            type="text"
-                            value={activityInputs[day.dayNumber] || ''}
-                            onChange={(e) => handleActivityInputChange(day.dayNumber, e.target.value)}
-                            placeholder="Add custom activity..."
-                            className="flex-1 bg-slate-950/40 border border-slate-800/80 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                          />
-                          <button
-                            type="submit"
-                            className="px-4 py-2 bg-slate-850 hover:bg-slate-800 border border-slate-800 text-xs font-semibold rounded-xl transition-colors"
-                          >
-                            Add
-                          </button>
-                        </form>
-                      </div>
+                      <ItineraryCard
+                        key={day.dayNumber}
+                        day={day}
+                        trip={selectedTrip}
+                        onUpdate={handleTripUpdated}
+                      />
                     ))}
                   </div>
                 </div>
 
-                {/* Packing List Placeholder */}
+                {/* Packing List Section */}
                 <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
                     ⛈️ AI Weather-Aware Packing Assistant
                   </h3>
-                  <p className="text-xs text-slate-400 mb-4">
+                  <p className="text-xs text-slate-400 mb-6">
                     Based on your active planned locations and local forecasted climate, pack these items:
                   </p>
-                  <div className="text-slate-500 text-xs italic">
-                    Packing list items will be integrated in Phase 10.
-                  </div>
+                  
+                  <PackingList
+                    packingList={selectedTrip.packingList}
+                    tripId={selectedTrip._id}
+                    onUpdate={handleTripUpdated}
+                  />
                 </div>
               </>
             )}
@@ -277,23 +229,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Temporary Modal Placeholder for creation */}
+      {/* Create Trip Form Modal Overlay */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full">
-            <h3 className="text-lg font-bold mb-4">Create Trip Placeholder</h3>
-            <p className="text-xs text-slate-400 mb-6">
-              Create trip form component will be integrated in Phase 10.
-            </p>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 bg-slate-800 text-xs font-semibold rounded-xl"
-              >
-                Close
-              </button>
-            </div>
-          </div>
+          <CreateTripForm
+            onTripCreated={handleTripCreated}
+            onClose={() => setShowCreateModal(false)}
+          />
         </div>
       )}
     </div>
