@@ -18,6 +18,11 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is healthy' });
 });
 
+// 404 Handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ message: 'Requested resource not found' });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
