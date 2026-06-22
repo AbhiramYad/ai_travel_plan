@@ -12,7 +12,7 @@ const generateToken = (user) => {
 
 export const register = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, name } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
@@ -28,14 +28,16 @@ export const register = async (req, res) => {
 
     const newUser = await User.create({
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      name: name ? name.trim() : ''
     });
 
     const token = generateToken(newUser);
 
     return res.status(201).json({
       token,
-      email: newUser.email
+      email: newUser.email,
+      name: newUser.name
     });
   } catch (error) {
     return res.status(500).json({ message: 'Server error during registration', error: error.message });
@@ -64,7 +66,8 @@ export const login = async (req, res) => {
 
     return res.status(200).json({
       token,
-      email: user.email
+      email: user.email,
+      name: user.name || ''
     });
   } catch (error) {
     return res.status(500).json({ message: 'Server error during login', error: error.message });

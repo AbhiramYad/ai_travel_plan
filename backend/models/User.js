@@ -4,6 +4,12 @@ import mongoose from 'mongoose';
 // Define the schema for the User model
 const UserSchema = new mongoose.Schema(
   {
+    // The optional display name of the user
+    name: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     // The email address of the user, used for registration and login authentication
     email: {
       // Data type is string

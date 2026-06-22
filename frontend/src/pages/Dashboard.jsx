@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [userName] = useState(() => localStorage.getItem('userName') || '');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function Dashboard() {
 
   const handleSignOut = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userName');
     navigate('/');
   };
 
@@ -82,9 +84,14 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header */}
       <header className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-800/80 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-        <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-          AI Travel Dashboard
-        </h1>
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+            AI Travel Dashboard
+          </h1>
+          {userName && (
+            <p className="text-xs text-slate-400 mt-0.5">Welcome back, <span className="text-indigo-400 font-semibold">{userName}</span> ✈️</p>
+          )}
+        </div>
         <div className="flex items-center gap-4">
           <button
             onClick={() => setShowCreateModal(true)}
@@ -181,6 +188,35 @@ export default function Dashboard() {
                     <span>Total Cost</span>
                     <span className="font-mono">${selectedTrip.estimatedBudget?.total || 0}</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Hotel Recommendations */}
+            {selectedTrip && selectedTrip.hotels && selectedTrip.hotels.length > 0 && (
+              <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                  🏨 Hotel Recommendations
+                </h3>
+                <div className="space-y-3">
+                  {selectedTrip.hotels.map((hotel, i) => (
+                    <div key={i} className="bg-slate-950/50 border border-slate-800/60 p-4 rounded-xl">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <p className="text-sm font-bold text-slate-200">{hotel.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{hotel.rating}</p>
+                        </div>
+                        <span className="text-xs font-mono bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-md shrink-0">
+                          ${hotel.estimatedCostNightUSD}/night
+                        </span>
+                      </div>
+                      <span className={`mt-2 inline-block text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${
+                        hotel.tier === 'High' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' :
+                        hotel.tier === 'Medium' ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400' :
+                        'border-slate-600 bg-slate-800/40 text-slate-400'
+                      }`}>{hotel.tier}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
