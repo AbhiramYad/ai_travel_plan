@@ -1,16 +1,112 @@
 import Trip from '../models/Trip.js';
 
-// Normalize timeOfDay values Gemini may return into consistent labels
+// Safety-net normalizer for timeOfDay — runs after responseSchema, handles any edge cases
 function normalizeTimeOfDay(value) {
   if (!value) return 'Morning';
   const v = value.toLowerCase().replace(/[-\s]/g, '');
   if (v.includes('morning')) return 'Morning';
-  if (v.includes('midday') || v.includes('noon') || v.includes('lunch')) return 'Midday';
-  if (v.includes('afternoon')) return 'Afternoon';
-  if (v.includes('evening') || v.includes('sunset')) return 'Evening';
-  if (v.includes('night') || v.includes('dinner')) return 'Night';
-  return value; // passthrough if unrecognized
+  if (v.includes('midday') || v.includes('noon') || v.includes('lunch') || v.includes('afternoon')) return 'Afternoon';
+  if (v.includes('evening') || v.includes('sunset') || v.includes('night') || v.includes('dinner')) return 'Evening';
+  return 'Morning'; // safe fallback
 }
+
+// ── Gemini responseSchema for full trip generation ──────────────────────────────
+// This enforces the exact structure AND enum values at the API/model-sampling level.
+// Gemini cannot return a value outside these enums — it is a hard constraint.
+const TRIP_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    itinerary: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          dayNumber:  { type: 'number' },
+          activities: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                title:            { type: 'string' },
+                description:      { type: 'string' },
+                estimatedCostUSD: { type: 'number' },
+                timeOfDay: {
+                  type: 'string',
+                  enum: ['Morning', 'Afternoon', 'Evening']  // hard constraint
+                }
+              },
+              required: ['title', 'timeOfDay']
+            }
+          }
+        },
+        required: ['dayNumber', 'activities']
+      }
+    },
+    hotels: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name:                 { type: 'string' },
+          tier: {
+            type: 'string',
+            enum: ['Budget', 'Standard', 'Luxury']  // hard constraint
+          },
+          estimatedCostNightUSD: { type: 'number' },
+          rating:               { type: 'string' }
+        },
+        required: ['name', 'tier']
+      }
+    },
+    estimatedBudget: {
+      type: 'object',
+      properties: {
+        transport:     { type: 'number' },
+        accommodation: { type: 'number' },
+        food:          { type: 'number' },
+        activities:    { type: 'number' },
+        total:         { type: 'number' }
+      }
+    },
+    packingList: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          item:     { type: 'string' },
+          category: {
+            type: 'string',
+            enum: ['Documents', 'Clothing', 'Outerwear', 'Footwear', 'Accessories',
+                   'Bags', 'Electronics', 'Gear', 'Toiletries', 'Medication',
+                   'Weather Gear', 'Travel Essentials', 'Other']  // hard constraint
+          },
+          isPacked: { type: 'boolean' }
+        },
+        required: ['item', 'category']
+      }
+    }
+  },
+  required: ['itinerary', 'hotels', 'estimatedBudget', 'packingList']
+};
+
+// ── Gemini responseSchema for single-day regeneration ───────────────────────────
+// Enforces the activity structure and timeOfDay enum for regenerated days.
+const REGEN_DAY_SCHEMA = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      title:            { type: 'string' },
+      description:      { type: 'string' },
+      estimatedCostUSD: { type: 'number' },
+      timeOfDay: {
+        type: 'string',
+        enum: ['Morning', 'Afternoon', 'Evening']  // hard constraint
+      }
+    },
+    required: ['title', 'timeOfDay']
+  }
+};
 
 // Normalize packing list category values Gemini may return
 function normalizeCategory(value) {
@@ -61,22 +157,19 @@ export const generateNewTrip = async (req, res) => {
     }
 
     const prompt = `Create a detailed travel plan for a ${durationDays}-day trip to ${destination}.
-Budget: ${budgetTier}. Interests: ${interests ? (Array.isArray(interests) ? interests.join(', ') : interests) : 'general sightseeing'}.
-Return ONLY a valid JSON object with this exact structure:
-{
-  "itinerary": [{ "dayNumber": 1, "activities": [{ "title": "Activity name", "description": "Activity details", "estimatedCostUSD": 20, "timeOfDay": "Morning" }] }],
-  "hotels": [{ "name": "Hotel Name", "tier": "Low/Medium/High", "estimatedCostNightUSD": 100, "rating": "4.5 stars" }],
-  "estimatedBudget": { "transport": 50, "accommodation": 200, "food": 100, "activities": 150, "total": 500 },
-  "packingList": [{ "item": "Packing Item", "category": "Clothing", "isPacked": false }]
-}
-Estimates must match realistic local rates for the budgetTier.
-packingList must be weather-aware and activity-specific for the destination and season.`;
+Budget level: ${budgetTier}. Interests: ${interests ? (Array.isArray(interests) ? interests.join(', ') : interests) : 'general sightseeing'}.
+Provide a day-by-day itinerary with realistic activities, 3 hotel options matching the budget tier,
+a realistic cost breakdown, and a weather-aware packing list for the destination and season.
+All cost estimates must match realistic local rates for the budget tier.`;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json' }
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: TRIP_RESPONSE_SCHEMA  // enforces structure and enum values at model level
+      }
     };
 
     const responseData = await fetchWithRetry(geminiUrl, {
@@ -188,16 +281,19 @@ export const regenerateDay = async (req, res) => {
     }
 
     const prompt = `You are updating Day ${dayNumber} of a travel itinerary to ${trip.destination}.
-User wants this change: "${feedback}".
+User feedback: "${feedback}".
 Existing activities for Day ${dayNumber}:
 ${JSON.stringify(trip.itinerary[dayIndex].activities)}
-Return ONLY a valid JSON array of updated activities for this day. Follow this exact structure:
-[{ "title": "Activity name", "description": "Activity details", "estimatedCostUSD": 20, "timeOfDay": "Morning" }]`;
+Return an updated list of activities for this day reflecting the user's requested changes.
+Keep activities realistic, well-described, and with accurate cost estimates for the destination.`;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json' }
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: REGEN_DAY_SCHEMA  // enforces activity structure and timeOfDay enum
+      }
     };
 
     const responseData = await fetchWithRetry(geminiUrl, {
@@ -211,7 +307,14 @@ Return ONLY a valid JSON array of updated activities for this day. Follow this e
     const contentText = responseData.candidates[0].content.parts[0].text;
     const newActivities = JSON.parse(contentText);
 
-    trip.itinerary[dayIndex].activities = newActivities;
+    // Safety-net normalizer — responseSchema should already guarantee correct values,
+    // but we normalize as a last line of defense before hitting Mongoose validation
+    const normalizedActivities = (newActivities || []).map(act => ({
+      ...act,
+      timeOfDay: normalizeTimeOfDay(act.timeOfDay)
+    }));
+
+    trip.itinerary[dayIndex].activities = normalizedActivities;
     const updatedTrip = await trip.save();
 
     return res.status(200).json(updatedTrip);
