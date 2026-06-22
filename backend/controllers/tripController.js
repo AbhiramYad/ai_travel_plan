@@ -50,7 +50,7 @@ const TRIP_RESPONSE_SCHEMA = {
           name:                 { type: 'string' },
           tier: {
             type: 'string',
-            enum: ['Budget', 'Standard', 'Luxury']  // hard constraint
+            enum: ['Low', 'Medium', 'High']  // hard constraint — matches Mongoose schema and Dashboard badge checks
           },
           estimatedCostNightUSD: { type: 'number' },
           rating:               { type: 'string' }
