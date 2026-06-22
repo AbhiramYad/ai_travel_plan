@@ -5,22 +5,22 @@ const TIME_OPTIONS = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
 
 export default function ItineraryCard({ day, trip, onUpdate }) {
   // ── Add Activity state ──────────────────────────
-  const [showAddForm, setShowAddForm]       = useState(false);
-  const [newTitle, setNewTitle]             = useState('');
-  const [newDesc, setNewDesc]               = useState('');
-  const [newCost, setNewCost]               = useState('');
-  const [newTime, setNewTime]               = useState('Morning');
-  const [addLoading, setAddLoading]         = useState(false);
-  const [addError, setAddError]             = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newCost, setNewCost] = useState('');
+  const [newTime, setNewTime] = useState('Morning');
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState('');
 
   // ── Regenerate Day state ────────────────────────
-  const [showRegenForm, setShowRegenForm]   = useState(false);
-  const [feedback, setFeedback]             = useState('');
-  const [regenLoading, setRegenLoading]     = useState(false);
-  const [regenError, setRegenError]         = useState('');
+  const [showRegenForm, setShowRegenForm] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [regenLoading, setRegenLoading] = useState(false);
+  const [regenError, setRegenError] = useState('');
 
   // ── Delete Activity state ───────────────────────
-  const [deletingIndex, setDeletingIndex]   = useState(null);
+  const [deletingIndex, setDeletingIndex] = useState(null);
 
   // ── Helpers ─────────────────────────────────────
   const resetAddForm = () => {

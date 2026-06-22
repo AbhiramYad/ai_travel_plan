@@ -136,18 +136,17 @@ export default function Dashboard() {
                   <div key={t._id} className="relative group">
                     <button
                       onClick={() => setSelectedTrip(t)}
-                      className={`w-full text-left p-4 pr-12 rounded-xl border text-sm transition-all flex flex-col gap-1 ${
-                        selectedTrip?._id === t._id
+                      className={`w-full text-left p-4 pr-12 rounded-xl border text-sm transition-all flex flex-col gap-1 ${selectedTrip?._id === t._id
                           ? 'bg-indigo-600/15 border-indigo-500/50 text-indigo-200'
                           : 'bg-slate-950/40 border-slate-800/60 text-slate-300 hover:border-slate-700/80'
-                      }`}
+                        }`}
                     >
                       <span className="font-bold text-slate-100 text-base">{t.destination}</span>
                       <span className="text-xs text-slate-400">
                         {t.durationDays} Days • {t.budgetTier} Budget
                       </span>
                     </button>
-                    
+
                     {/* Delete Trip button */}
                     <button
                       onClick={() => handleDeleteTrip(t._id)}
@@ -210,11 +209,10 @@ export default function Dashboard() {
                           ${hotel.estimatedCostNightUSD}/night
                         </span>
                       </div>
-                      <span className={`mt-2 inline-block text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${
-                        hotel.tier === 'High' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' :
-                        hotel.tier === 'Medium' ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400' :
-                        'border-slate-600 bg-slate-800/40 text-slate-400'
-                      }`}>{hotel.tier}</span>
+                      <span className={`mt-2 inline-block text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${hotel.tier === 'High' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' :
+                          hotel.tier === 'Medium' ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400' :
+                            'border-slate-600 bg-slate-800/40 text-slate-400'
+                        }`}>{hotel.tier}</span>
                     </div>
                   ))}
                 </div>
@@ -231,7 +229,7 @@ export default function Dashboard() {
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">
                     Itinerary Timeline
                   </h3>
-                  
+
                   <div className="relative pl-6 border-l-2 border-indigo-500/30 ml-4 space-y-8">
                     {selectedTrip.itinerary.map((day) => (
                       <ItineraryCard
@@ -252,7 +250,7 @@ export default function Dashboard() {
                   <p className="text-xs text-slate-400 mb-6">
                     Based on your active planned locations and local forecasted climate, pack these items:
                   </p>
-                  
+
                   <PackingList
                     packingList={selectedTrip.packingList}
                     tripId={selectedTrip._id}

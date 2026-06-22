@@ -73,7 +73,7 @@ Estimates must match realistic local rates for the budgetTier.
 packingList must be weather-aware and activity-specific for the destination and season.`;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-    
+
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json' }

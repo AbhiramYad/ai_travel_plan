@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import api from '../utils/api';
 
 const BUDGET_OPTIONS = [
-  { value: 'Low',    label: 'Budget',  icon: '💰', desc: 'Hostels & local food' },
+  { value: 'Low', label: 'Budget', icon: '💰', desc: 'Hostels & local food' },
   { value: 'Medium', label: 'Standard', icon: '✈️', desc: 'Mid-range comfort' },
-  { value: 'High',   label: 'Luxury',  icon: '👑', desc: 'Premium experience' },
+  { value: 'High', label: 'Luxury', icon: '👑', desc: 'Premium experience' },
 ];
 
 export default function CreateTripForm({ onTripCreated, onClose }) {
