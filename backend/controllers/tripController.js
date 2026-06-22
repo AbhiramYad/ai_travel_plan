@@ -1,5 +1,36 @@
 import Trip from '../models/Trip.js';
 
+// Normalize timeOfDay values Gemini may return into consistent labels
+function normalizeTimeOfDay(value) {
+  if (!value) return 'Morning';
+  const v = value.toLowerCase().replace(/[-\s]/g, '');
+  if (v.includes('morning')) return 'Morning';
+  if (v.includes('midday') || v.includes('noon') || v.includes('lunch')) return 'Midday';
+  if (v.includes('afternoon')) return 'Afternoon';
+  if (v.includes('evening') || v.includes('sunset')) return 'Evening';
+  if (v.includes('night') || v.includes('dinner')) return 'Night';
+  return value; // passthrough if unrecognized
+}
+
+// Normalize packing list category values Gemini may return
+function normalizeCategory(value) {
+  if (!value) return 'Other';
+  const v = value.toLowerCase();
+  if (v.includes('document') || v.includes('passport') || v.includes('visa')) return 'Documents';
+  if (v.includes('cloth') || v.includes('shirt') || v.includes('pant') || v.includes('dress')) return 'Clothing';
+  if (v.includes('outer') || v.includes('jacket') || v.includes('coat')) return 'Outerwear';
+  if (v.includes('shoe') || v.includes('foot') || v.includes('boot') || v.includes('sandal')) return 'Footwear';
+  if (v.includes('accessor') || v.includes('jewel') || v.includes('watch')) return 'Accessories';
+  if (v.includes('bag') || v.includes('luggage') || v.includes('backpack')) return 'Bags';
+  if (v.includes('electron') || v.includes('charger') || v.includes('camera') || v.includes('device')) return 'Electronics';
+  if (v.includes('gear') || v.includes('equipment') || v.includes('sport')) return 'Gear';
+  if (v.includes('toilet') || v.includes('hygiene') || v.includes('grooming') || v.includes('health')) return 'Toiletries';
+  if (v.includes('medic') || v.includes('pill') || v.includes('drug') || v.includes('pharmacy')) return 'Medication';
+  if (v.includes('weather') || v.includes('rain') || v.includes('umbrella') || v.includes('sunscreen')) return 'Weather Gear';
+  if (v.includes('essential') || v.includes('travel') || v.includes('misc')) return 'Travel Essentials';
+  return 'Other';
+}
+
 async function fetchWithRetry(url, options, retries = 5, delay = 1000) {
   try {
     const response = await fetch(url, options);
@@ -59,16 +90,30 @@ packingList must be weather-aware and activity-specific for the destination and 
     const contentText = responseData.candidates[0].content.parts[0].text;
     const tripData = JSON.parse(contentText);
 
+    // Normalize Gemini's unpredictable timeOfDay and category values before saving
+    const normalizedItinerary = (tripData.itinerary || []).map(day => ({
+      ...day,
+      activities: (day.activities || []).map(act => ({
+        ...act,
+        timeOfDay: normalizeTimeOfDay(act.timeOfDay)
+      }))
+    }));
+
+    const normalizedPackingList = (tripData.packingList || []).map(item => ({
+      ...item,
+      category: normalizeCategory(item.category)
+    }));
+
     const newTrip = new Trip({
       userId,
       destination,
       durationDays,
       budgetTier,
       interests: Array.isArray(interests) ? interests : (interests ? interests.split(',').map(i => i.trim()) : []),
-      itinerary: tripData.itinerary,
+      itinerary: normalizedItinerary,
       hotels: tripData.hotels,
       estimatedBudget: tripData.estimatedBudget,
-      packingList: tripData.packingList
+      packingList: normalizedPackingList
     });
 
     const savedTrip = await newTrip.save();

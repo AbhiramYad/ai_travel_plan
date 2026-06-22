@@ -20,7 +20,7 @@ const ActivitySchema = new mongoose.Schema({
   // The time of the day the activity takes place
   timeOfDay: {
     type: String,
-    enum: ['Morning', 'Afternoon', 'Evening']
+    default: 'Morning'
   }
 });
 
@@ -95,7 +95,7 @@ const PackingItemSchema = new mongoose.Schema({
   // Category of the item to pack
   category: {
     type: String,
-    enum: ['Documents', 'Clothing', 'Gear', 'Other']
+    default: 'Other'
   },
   // Checked status indicating if the item has been packed by the user
   isPacked: {
